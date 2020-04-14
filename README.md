@@ -65,6 +65,8 @@ function next(ret) {
       + 'but the following object was passed: "' + String(ret.value) + '"'));
   }
 ```
-* next()做了两件事，一个是对象的Promise化，一个是通过`value.then(onFulfilled)`调用onFulfilled方法，onFulfilled继续调用gen.next()和next()方法。
+* next()做了两件事：
+一个是对象的Promise化。
+一个是通过`value.then(onFulfilled)`将当前的中间值传递给then的第一个对象，即为onFulfilled。onFulfilled在当前值的基础上继续调用gen.next()和next()方法。
 从而实现了递归，递归的出口也就是迭代器{value:undefined, done:true},即`if (ret.done) return resolve(ret.value);`
 
