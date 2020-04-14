@@ -66,8 +66,8 @@ function next(ret) {
   }
 ```
 * next()做了两件事：
-** 一个是对象的Promise化。
-** 一个是通过`value.then(onFulfilled)`将当前的中间值传递给then的第一个对象，即为onFulfilled。
-** onFulfilled在当前值的基础上继续调用gen.next()和next()方法。由onFulfilled->next()->onFulfilled实现了迭代器的自动执行。
-** 当迭代器遍历结束时，其结果格式应该为{value:undefined, done:true},即`if (ret.done) return resolve(ret.value);`，此时遍历结束。
+  * 一个是对象的Promise化。
+  * 一个是通过`value.then(onFulfilled)`将当前的中间值传递给then的第一个对象，即为onFulfilled。
+  * onFulfilled在当前值的基础上继续调用gen.next()和next()方法。由onFulfilled->next()->onFulfilled实现了迭代器的自动执行。
+  * 当迭代器遍历结束时，其结果格式应该为{value:undefined, done:true}，即`if (ret.done) return resolve(ret.value);` 此时遍历结束。
 
