@@ -1,8 +1,65 @@
 # node
 ## co 源码解读
 ### 使用场景
-co是基于generator实现的流式控制器，适用于nodejs和浏览器。它结合了promise共同解决异步嵌套问题。可以看做是```async/await```
-前身。
+异步概念： js是单线程，所谓单线程就是代码按着从上到下的顺序去执行。但是在单线程中如果存在耗时时间非常长的计算，线程将会发生阻塞，无法向下继续执行。为了解决这类问题。js针对这种场景设计了异步---即发送了一个请求后不会立即得结果，代码可以继续往下执行。待结果返回后通过回调的方式去处理。但是，当有相互依赖的异步调用存在时，会产生异步嵌套的问题。我们可以通过generator、async/await、promise等方法解决异步嵌套问题。
+
+#generator
+```
+//通过function *(){}的方式定义一个迭代器
+function *gen(){
+  //yield 用来暂停迭代器，并将执行权交给func1()
+   yield fun1()
+   yield func2()
+}
+function fun1(){
+  setTimeout(()=>return 1)
+}
+function fun2(){
+  setTimeout(()=>return 2)
+}
+//创建一个迭代器
+var g = gen()
+//g.next()在上次暂停的地方继续执行。并将执行权交还给g即当前生成器
+g.next() //{value:1,done:false}
+g.next() // {value: 2, done:false}
+g.next() //{value:undefined: done: true}
+```
+yield命令像一个切换器一样，控制执行权的切换。
+generator遇到yield就暂停，将执行权交给yield 指定的对象，对象执行完毕后将执行权返回，由generator.next恢复执行，generator.next会在在上次暂停的地方继续执行。
+generator的优点就是代码写法像同步写法，但是需要手动去控制流程的执行，非常不方便。
+
+那么如何实现generator的自动回调呢？
+```
+var fn = thunk(origin)
+function thunk(fn) {
+  return function(){
+    var args = Array.prototype.slice.call(arguments)
+    return function(callback) {
+       args.push(callback)
+      return fn.apply(this,args )
+    }
+  }
+}
+function run(fn){
+  var gen = fn()
+  function next(){
+    var result = gen.next()
+    if (result.done) return
+    result.value(next)
+  }
+}
+function *origin(){
+    var a = yield fun1()
+    var b = yield fun2()
+    return a+b 
+}
+function fun1(){
+    setTimeout(()=>1)
+}
+function fun2(a){
+    setTimeout(()=>a+1)
+}
+```
 
 ***
 ### 源码解读
