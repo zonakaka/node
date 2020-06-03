@@ -25,48 +25,28 @@ module.exports = class Application extends Emitter {
   }
 
 
-  // 引入
-   * @api public
-   * @a
+  // 以数组的形式导入中间件
   use(fn) {
-    if (typeof fn !== 'function') throw new TypeError('middleware must be a function!');
-    if (isGeneratorFunction(fn)) {
-      deprecate('Support for generators will be removed in v3. ' +
-                'See the documentation for examples of how to convert old middleware ' +
-                'https://github.com/koajs/koa/blob/master/docs/migration.md');
-      fn = convert(fn);
-    }
-    debug('use %s', fn._name || fn.name || '-');
     this.middleware.push(fn);
     return this;
   }
 
-  /**
-   * Return a request handler callback
-   * for node's native http server.
-   *
-   * @return {Function}
-   * @api public
-   */
-
+  
+  // http.createServer()的回调
   callback() {
     const fn = compose(this.middleware);
 
-    if (!this.listenerCount('error')) this.on('error', this.onerror);
 
     const handleRequest = (req, res) => {
+    // 创建context
       const ctx = this.createContext(req, res);
+      // 发送请求
       return this.handleRequest(ctx, fn);
     };
 
     return handleRequest;
   }
 
-  /**
-   * Handle request in callback.
-   *
-   * @api private
-   */
 
   handleRequest(ctx, fnMiddleware) {
     const res = ctx.res;
@@ -74,15 +54,11 @@ module.exports = class Application extends Emitter {
     const onerror = err => ctx.onerror(err);
     const handleResponse = () => respond(ctx);
     onFinished(res, onerror);
+    // 发送请求，中间件包装处理后的对象作为请求对象
     return fnMiddleware(ctx).then(handleResponse).catch(onerror);
   }
 
-  /**
-   * Initialize a new context.
-   *
-   * @api private
-   */
-
+  // 初始化context
   createContext(req, res) {
     const context = Object.create(this.context);
     const request = context.request = Object.create(this.request);
@@ -98,25 +74,7 @@ module.exports = class Application extends Emitter {
     return context;
   }
 
-  /**
-   * Default error handler.
-   *
-   * @param {Error} err
-   * @api private
-   */
-
-  onerror(err) {
-    if (!(err instanceof Error)) throw new TypeError(util.format('non-error thrown: %j', err));
-
-    if (404 === err.status || err.expose) return;
-    if (this.silent) return;
-
-    const msg = err.stack || err.toString();
-    console.error();
-    console.error(msg.replace(/^/gm, '  '));
-    console.error();
-  }
-};
+  
 
 /**
  * Response helper.
@@ -131,58 +89,11 @@ function respond(ctx) {
   const res = ctx.res;
   let body = ctx.body;
   const code = ctx.status;
-
-  // ignore body
-  if (statuses.empty[code]) {
-    // strip headers
-    ctx.body = null;
-    return res.end();
-  }
-
-  if ('HEAD' === ctx.method) {
-    if (!res.headersSent && !ctx.response.has('Content-Length')) {
-      const { length } = ctx.response;
-      if (Number.isInteger(length)) ctx.length = length;
-    }
-    return res.end();
-  }
-
-  // status body
-  if (null == body) {
-    if (ctx.response._explicitNullBody) {
-      ctx.response.remove('Content-Type');
-      ctx.response.remove('Transfer-Encoding');
-      return res.end();
-    }
-    if (ctx.req.httpVersionMajor >= 2) {
-      body = String(code);
-    } else {
-      body = ctx.message || String(code);
-    }
-    if (!res.headersSent) {
-      ctx.type = 'text';
-      ctx.length = Buffer.byteLength(body);
-    }
-    return res.end(body);
-  }
-
-  // responses
-  if (Buffer.isBuffer(body)) return res.end(body);
-  if ('string' === typeof body) return res.end(body);
-  if (body instanceof Stream) return body.pipe(res);
-
-  // body: json
-  body = JSON.stringify(body);
-  if (!res.headersSent) {
-    ctx.length = Buffer.byteLength(body);
-  }
+  //根据不同的body内容及类型对body进行处理...省略细节代码
+  
+  
   res.end(body);
 }
-
-/**
- * Make HttpError available to consumers of the library so that consumers don't
- * have a direct dependency upon `http-errors`
- */
 module.exports.HttpError = HttpError;
 
 ```
