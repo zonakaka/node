@@ -25,7 +25,7 @@ module.exports = class Application extends Emitter {
   }
 
 
-  // 以数组的形式导入中间件
+  // 以数组的形式保存通过 app.use(....)引入的中间件
   use(fn) {
     this.middleware.push(fn);
     return this;
