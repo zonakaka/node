@@ -1,61 +1,99 @@
-
-
 ### 一、 koa是什么
--------------------
+------------
 koa是一个精简的node框架，它主要做了以下事情：
 * 基于node原生req和res为request和response对象赋能，并基于它们封装成一个context对象。
 * 基于async/await（generator）的中间件洋葱模型机制。
+  
+### 二、初读koa源码
+----------
+koa源码比较简单，主要由四个文件构成<br/>
+```
+── lib <br/>
+   ├── application.js  <br/>
+   ├── context.js       <br/>
+   ├── request.js                    <br/>
+   └── response.js                    <br/>
+```
 
+这4个文件其实也对应了koa的4个对象：<br/>
+```
+── lib <br/>
+   ├── new Koa()  <br/>
+   ├── ctx       <br/>
+   ├── ctx.req                   <br/>
+   └── ctx.response                   <br/>
+```
 
-``` javascript
+接下来我们分别看下各个文件的源码。
 
-'use strict';
+### 2.1 application.js
+-----------
+部分不必要代码省略不表
+```javascript
+const onFinished = require('on-finished');
+const response = require('./response');
+const compose = require('koa-compose');
+const context = require('./context');
+const request = require('./request');
+const Emitter = require('events');
+const http = require('http');
+const convert = require('koa-convert');
+
+/**
+ * Expose `Application` class.
+ * Inherits from `Emitter.prototype`.
+ */
 module.exports = class Application extends Emitter {
   /**
    * Initialize a new `Application`.
-   *
-   * @api public
    */
-
   constructor(options) {
-    super();
-    
     this.middleware = [];
     this.context = Object.create(context);
     this.request = Object.create(request);
     this.response = Object.create(response);
   }
-
-  // http.createServer(app.callback()).listen(...)的简写
+  /**
+   * Shorthand for:
+   *    http.createServer(app.callback()).listen(...)
+   */
   listen(...args) {
     debug('listen');
     const server = http.createServer(this.callback());
+    // http.createServer((req, res) => {...})
     return server.listen(...args);
   }
+  /**
+   * Use the given middleware `fn`.
+   * Old-style middleware will be converted.
+   */
 
-
-  // 以数组的形式保存通过 app.use(....)引入的中间件
   use(fn) {
+    if (isGeneratorFunction(fn)) {
+      fn = convert(fn);
+    }
     this.middleware.push(fn);
     return this;
   }
 
-  
-  // http.createServer()的回调
+  /**
+   * Return a request handler callback
+   * for node's native http server.
+   */
+
   callback() {
     const fn = compose(this.middleware);
-
-
     const handleRequest = (req, res) => {
-    // 创建context
       const ctx = this.createContext(req, res);
-      // 发送请求
       return this.handleRequest(ctx, fn);
     };
 
     return handleRequest;
   }
 
+  /**
+   * Handle request in callback.
+   */
 
   handleRequest(ctx, fnMiddleware) {
     const res = ctx.res;
@@ -63,46 +101,34 @@ module.exports = class Application extends Emitter {
     const onerror = err => ctx.onerror(err);
     const handleResponse = () => respond(ctx);
     onFinished(res, onerror);
-    // 发送请求，中间件包装处理后的对象作为请求对象
     return fnMiddleware(ctx).then(handleResponse).catch(onerror);
   }
 
-  // 初始化context
+  /**
+   * Initialize a new context.
+   *
+   * @api private
+   */
+
   createContext(req, res) {
     const context = Object.create(this.context);
     const request = context.request = Object.create(this.request);
     const response = context.response = Object.create(this.response);
-    context.app = request.app = response.app = this;
-    context.req = request.req = response.req = req;
-    context.res = request.res = response.res = res;
-    request.ctx = response.ctx = context;
-    request.response = response;
-    response.request = request;
-    context.originalUrl = request.originalUrl = req.url;
-    context.state = {};
     return context;
   }
-
-  
 
 /**
  * Response helper.
  */
-
 function respond(ctx) {
-  // allow bypassing koa
-  if (false === ctx.respond) return;
-
-  if (!ctx.writable) return;
-
-  const res = ctx.res;
   let body = ctx.body;
-  const code = ctx.status;
-  //根据不同的body内容及类型对body进行处理...省略细节代码
-  
-  
+  // body: [json, string, buffer, stream]
   res.end(body);
 }
-module.exports.HttpError = HttpError;
-
 ```
+### 2.2 context.js
+-----------
+### 2.3 request.js
+-----------
+### 2.4 response.js
+-----------
