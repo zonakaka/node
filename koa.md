@@ -1,3 +1,12 @@
+
+
+### 一、 koa是什么
+-------------------
+koa是一个精简的node框架，它主要做了以下事情：
+* 基于node原生req和res为request和response对象赋能，并基于它们封装成一个context对象。
+* 基于async/await（generator）的中间件洋葱模型机制。
+
+
 ``` javascript
 
 'use strict';
